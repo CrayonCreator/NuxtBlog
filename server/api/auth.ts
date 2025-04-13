@@ -10,7 +10,7 @@ const JWT_SECRET: string = process.env.JWT_SECRET || "DEFAULE";
 const router = createRouter();
 
 // 发送验证码
-router.post("/send-verification-code", async (event: H3Event) => {
+router.post("/send-verification-code", eventHandler(async (event: H3Event) => {
   try{
     await connectToDatabase();
     const body = await readBody(event);
@@ -72,10 +72,10 @@ router.post("/send-verification-code", async (event: H3Event) => {
       statusMessage: "发送验证码失败"
     })
   }
-})
+}))
 
 // 注册
-router.post("/register", async (event: H3Event) => {
+router.post("/register", eventHandler(async (event: H3Event) => {
   try {
     await connectToDatabase();
     // 获取请求体
@@ -156,10 +156,10 @@ router.post("/register", async (event: H3Event) => {
       statusMessage: "注册失败"
     })
   }
-})
+}))
 
 // 登录
-router.post("/login", async (event: H3Event) => {
+router.post("/login", eventHandler(async (event: H3Event) => {
   try{
     await connectToDatabase();
     const body = await readBody(event);
@@ -212,7 +212,10 @@ router.post("/login", async (event: H3Event) => {
       statusMessage: "登录失败"
     })
   }
-})
+}))
+
+// 忘记密码
+
 
 export default defineEventHandler((event)=>{
   return router.handler(event)

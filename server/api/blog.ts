@@ -4,7 +4,7 @@ import  jwtMiddleware from '../middlewares/jwt';
 import { nanoid } from 'nanoid';
 const router = createRouter();
 
-router.get('/',async(event : H3Event)=>{
+router.get('/',eventHandler(async(event : H3Event)=>{
     try{
       await connectToDatabase();
       const query = getQuery(event);
@@ -60,10 +60,10 @@ router.get('/',async(event : H3Event)=>{
           statusMessage: '文章获取失败'
         })
     }
-})
+}))
 
 // 获取单篇
-router.get('/:id', async (event: H3Event) => {
+router.get('/:id',eventHandler( async (event: H3Event) => {
   try{
     await connectToDatabase();
     const id = getQuery(event).id;
@@ -112,10 +112,10 @@ router.get('/:id', async (event: H3Event) => {
       statusMessage: '文章获取失败'
     })
   }
-})
+}))
 
 // 创建
-router.post('/', async (event: H3Event) => {
+router.post('/', eventHandler(async (event: H3Event) => {
   try{
     const user = await jwtMiddleware(event);
 
@@ -165,11 +165,11 @@ router.post('/', async (event: H3Event) => {
       statusMessage: '文章创建失败'
     })
   }
-})
+}))
 
 // 更新
 
-router.put('/:id', async (event: H3Event) => {
+router.put('/:id', eventHandler(async (event: H3Event) => {
   try{
     const user = await jwtMiddleware(event);
     if(!user || 'statusCode' in user){
@@ -228,11 +228,11 @@ router.put('/:id', async (event: H3Event) => {
       message: '更新博客失败'
     });
   }
-})
+}))
 
 // 删除
 
-router.delete('/:id',async (event:H3Event)=>{
+router.delete('/:id',eventHandler(async (event:H3Event)=>{
   try{
     const user = await jwtMiddleware(event);
 
@@ -282,7 +282,7 @@ router.delete('/:id',async (event:H3Event)=>{
       message: '删除博客失败'
     });
   }
-})
+}))
 
 export default defineEventHandler((event)=>{
   return router.handler(event);
