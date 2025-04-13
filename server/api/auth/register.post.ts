@@ -64,7 +64,8 @@ export default eventHandler(async (event) => {
     // 生成 JWT
     const token = jwt.sign({
       id: userId,
-      email: body.email
+      email: body.email,
+      username: body.username // 确保JWT包含用户名
     }, 
     JWT_SECRET,
     { 

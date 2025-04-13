@@ -1,23 +1,39 @@
-import { H3Event } from "h3";
-import jwt from "jsonwebtoken";
-import { connectToDatabase , UserModel } from "../api/db"; 
-import {UserSend} from "../type/User";
-const JWT_SECRET = process.env.JWT_SECRET || "DEFAULE";
+import { getRequestHeader, createError } from 'h3'
+import jwt from 'jsonwebtoken'
+import { connectToDatabase, UserModel } from "../api/db";
+import { UserSend } from "../type/User";
 
-export default async function jwtMiddleware(event:H3Event){
-  // 检查请求头
-  const authHeader = event.node.req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+// 解析JWT中携带的用户信息接口
+interface UserPayload {
+  id: string
+  email: string
+  username?: string // 添加可选的用户名字段
+  iat?: number
+  exp?: number
+}
+
+export default async function jwtMiddleware(event: any) {
+  const authHeader = getRequestHeader(event, 'Authorization')
+  
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return createError({
       statusCode: 401,
-      message: "未授权访问"
-    });
+      statusMessage: 'Authorization header is missing or invalid'
+    })
   }
-
-  const token = authHeader.substring(7);
-  try{
-    // 验证
-    const decoded = jwt.verify(token, JWT_SECRET) as { id: string, email: string };
+  
+  const token = authHeader.split(' ')[1]
+  
+  if (!token) {
+    return createError({
+      statusCode: 401,
+      statusMessage: 'Token is missing'
+    })
+  }
+  
+  try {
+    const JWT_SECRET = process.env.JWT_SECRET || 'DEFAULT'
+    const decoded = jwt.verify(token, JWT_SECRET) as UserPayload
 
     await connectToDatabase();
     const user = await UserModel.findOne({ id: decoded.id });
@@ -25,7 +41,7 @@ export default async function jwtMiddleware(event:H3Event){
     if (!user) {
       return createError({
         statusCode: 401,
-        message: "用户不存在"
+        statusMessage: "User does not exist"
       });
     }
 
@@ -36,12 +52,17 @@ export default async function jwtMiddleware(event:H3Event){
       createdAt: user.createdAt
     }
     event.context.user = userData;
-    return userData;
-  }catch (error) {
-    console.error("JWT验证失败", error);
+
+    return {
+      id: decoded.id,
+      email: decoded.email,
+      username: decoded.username // 返回用户名信息
+    }
+  } catch (error) {
+    console.error('JWT verification failed:', error)
     return createError({
       statusCode: 401,
-      message: "无效的令牌"
-    });
+      statusMessage: 'Token is invalid or expired'
+    })
   }
 }

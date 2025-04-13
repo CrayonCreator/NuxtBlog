@@ -194,9 +194,10 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import alert from '@/components/alert.vue'
 const activeTab = ref('login')
+const router = useRouter();
 
 // 使用InstanceType<typeof alert>来明确指定组件类型
 const alertComponent = ref<InstanceType<typeof alert> | null>(null)
@@ -307,7 +308,10 @@ const handleLogin = async () => {
     }
     
     if (data.value && 'token' in data.value) {
-      localStorage.setItem('token', data.value.token)
+      // 只在客户端环境保存token
+      if (import.meta.client) {
+        localStorage.setItem('token', data.value.token)
+      }
       navigateTo('/')
     } else {
       throw new Error('登录成功但未返回有效令牌')
@@ -325,7 +329,6 @@ const handleRegister = async () => {
     return
   }
   
-  
   try {
     const { data, error } = await useFetch('/api/auth/register', {
       method: 'POST',
@@ -342,7 +345,10 @@ const handleRegister = async () => {
     }
     
     if (data.value && 'token' in data.value) {
-      localStorage.setItem('token', data.value.token)
+      // 只在客户端环境保存token
+      if (import.meta.client) {
+        localStorage.setItem('token', data.value.token)
+      }
       showMessage('注册成功', 'success')
       navigateTo('/')
     } else {
@@ -407,20 +413,68 @@ const handleForgotPassword = async () => {
   min-height: 100vh;
   background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
   padding: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 添加装饰元素 */
+.auth-container::before,
+.auth-container::after {
+  content: "";
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(67, 97, 238, 0.1), rgba(58, 86, 222, 0.05));
+  z-index: 0;
+}
+
+.auth-container::before {
+  top: -100px;
+  right: -50px;
+  animation: float 15s infinite ease-in-out;
+}
+
+.auth-container::after {
+  bottom: -100px;
+  left: -50px;
+  animation: float 18s infinite ease-in-out reverse;
+}
+
+@keyframes float {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(15px, 15px) rotate(5deg); }
+  50% { transform: translate(0, 30px) rotate(0deg); }
+  75% { transform: translate(-15px, 15px) rotate(-5deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
 }
 
 .auth-card {
   width: 100%;
   max-width: 480px;
-  background-color: white;
-  border-radius: 12px;
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 20px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
   overflow: hidden;
+  position: relative;
+  z-index: 10;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  transition: all 0.3s ease;
+}
+
+.auth-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
 }
 
 .auth-header {
   padding: 20px 0;
-  background-color: #f8f9fa;
+  background: rgba(248, 249, 250, 0.8);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.6);
 }
 
 .tabs {
@@ -439,11 +493,26 @@ const handleForgotPassword = async () => {
   padding: 10px 20px;
   border-bottom: 2px solid transparent;
   transition: all 0.3s ease;
+  position: relative;
 }
 
 .tab-btn.active {
   color: #4361ee;
-  border-bottom: 2px solid #4361ee;
+}
+
+.tab-btn::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 2px;
+  bottom: 0;
+  left: 0;
+  background: linear-gradient(90deg, #4361ee, #3a56de);
+  transition: width 0.3s ease;
+}
+
+.tab-btn.active::after {
+  width: 100%;
 }
 
 .auth-body {
@@ -460,6 +529,10 @@ label {
   font-weight: 500;
   margin-bottom: 8px;
   color: #495057;
+  background: linear-gradient(135deg, #2d3748, #4a5568);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 input[type="email"],
@@ -467,10 +540,13 @@ input[type="password"],
 input[type="text"] {
   width: 100%;
   padding: 12px 15px;
-  border: 1px solid #ced4da;
-  border-radius: 6px;
+  border: 1px solid rgba(203, 213, 225, 0.6);
+  border-radius: 10px;
   font-size: 16px;
-  transition: border-color 0.3s ease;
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
 }
 
 input[type="email"]:focus,
@@ -478,7 +554,8 @@ input[type="password"]:focus,
 input[type="text"]:focus {
   outline: none;
   border-color: #4361ee;
-  box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.2);
+  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+  background: rgba(255, 255, 255, 0.95);
 }
 
 .code-input-group {
@@ -492,23 +569,27 @@ input[type="text"]:focus {
 
 .send-code-btn {
   white-space: nowrap;
-  background-color: #4361ee;
+  background: linear-gradient(135deg, #4361ee, #3a56de);
   color: white;
   border: none;
-  border-radius: 6px;
-  padding: 0 15px;
+  border-radius: 10px;
+  padding: 0 20px;
   font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 10px rgba(67, 97, 238, 0.2);
 }
 
-.send-code-btn:hover {
-  background-color: #3a56de;
+.send-code-btn:hover:not(:disabled) {
+  box-shadow: 0 6px 15px rgba(67, 97, 238, 0.3);
+  transform: translateY(-2px);
 }
 
 .send-code-btn:disabled {
-  background-color: #a8b1ce;
+  background: linear-gradient(135deg, #a0aec0, #cbd5e0);
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .terms {
@@ -543,39 +624,61 @@ input[type="text"]:focus {
   font-size: 14px;
   color: #4361ee;
   text-decoration: none;
+  position: relative;
+  transition: all 0.3s ease;
 }
 
-.forgot-password a:hover, .back-to-login a:hover {
-  text-decoration: underline;
+.forgot-password a::after, .back-to-login a::after {
+  content: '';
+  position: absolute;
+  width: 0;
+  height: 1px;
+  bottom: -2px;
+  left: 0;
+  background: linear-gradient(90deg, #4361ee, #3a56de);
+  transition: width 0.3s ease;
+}
+
+.forgot-password a:hover::after, .back-to-login a:hover::after {
+  width: 100%;
 }
 
 .submit-btn {
   width: 100%;
-  background-color: #4361ee;
+  background: linear-gradient(135deg, #4361ee, #3a56de);
   color: white;
   border: none;
-  border-radius: 6px;
-  padding: 12px;
+  border-radius: 10px;
+  padding: 14px;
   font-size: 16px;
   font-weight: 500;
   cursor: pointer;
-  transition: background-color 0.3s ease;
+  transition: all 0.3s ease;
   margin-bottom: 15px;
+  box-shadow: 0 4px 10px rgba(67, 97, 238, 0.2);
 }
 
 .submit-btn:hover {
-  background-color: #3a56de;
+  box-shadow: 0 8px 20px rgba(67, 97, 238, 0.3);
+  transform: translateY(-2px);
 }
 
 .error-msg {
-  color: #dc3545;
+  color: #e53e3e;
   font-size: 13px;
   margin-top: 5px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @media (max-width: 576px) {
   .auth-card {
     box-shadow: none;
+    background: rgba(255, 255, 255, 0.9);
   }
   
   .code-input-group {
