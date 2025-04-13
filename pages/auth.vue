@@ -122,15 +122,6 @@
             </div>
           </div>
           
-          <div class="form-group terms">
-            <input 
-              id="terms" 
-              type="checkbox" 
-              v-model="registerForm.agreeTerms"
-            />
-            <label for="terms">我已阅读并同意 <a href="#">服务条款</a> 和 <a href="#">隐私政策</a></label>
-          </div>
-          
           <button type="submit" class="submit-btn">注册</button>
         </form>
         
@@ -199,12 +190,16 @@
       </div>
     </div>
   </div>
+  <alert ref="alertComponent" />
 </template>
 
 <script lang="ts" setup>
 import { ref, computed } from 'vue'
-
+import alert from '@/components/alert.vue'
 const activeTab = ref('login')
+
+// 使用InstanceType<typeof alert>来明确指定组件类型
+const alertComponent = ref<InstanceType<typeof alert> | null>(null)
 
 const loginForm = ref({
   email: '',
@@ -217,7 +212,6 @@ const registerForm = ref({
   verificationCode: '',
   password: '',
   confirmPassword: '',
-  agreeTerms: false
 })
 
 const forgotPasswordForm = ref({
@@ -244,11 +238,21 @@ const newPasswordMismatch = computed(() => {
          forgotPasswordForm.value.newPassword !== forgotPasswordForm.value.confirmNewPassword
 })
 
+const showMessage = (message: string, type: 'info' | 'success' | 'warning' | 'error' = 'info') => {
+  if (alertComponent.value) {
+    alertComponent.value.open({
+      message,
+      type,
+      duration: 3000 
+    })
+  }
+}
+
 const sendVerificationCode = async (type: 'register' | 'forgot') => {
   const email = type === 'register' ? registerForm.value.email : forgotPasswordForm.value.email
   
   if (!email) {
-    alert('请先输入邮箱')
+    showMessage('请先输入邮箱', 'warning')
     return
   }
   
@@ -257,6 +261,7 @@ const sendVerificationCode = async (type: 'register' | 'forgot') => {
       method: 'POST',
       body: {
         email,
+        type: type==='register' ? 'register' : 'reset'
       }
     })
     
@@ -282,11 +287,11 @@ const sendVerificationCode = async (type: 'register' | 'forgot') => {
       }, 1000)
     }
     
-    alert('验证码已发送，请查收邮箱')
+    showMessage('验证码已发送，请查收邮箱', 'success')
     
   } catch (error: any) {
     console.error('发送验证码失败:', error)
-    alert(error?.message || '发送验证码失败，请稍后重试')
+    showMessage('发送验证码失败，请稍后重试', 'error')
   }
 }
 
@@ -301,26 +306,25 @@ const handleLogin = async () => {
       throw new Error(error.value.message || '登录失败')
     }
     
-    localStorage.setItem('token', data.value.token)
-    
-    navigateTo('/')
+    if (data.value && 'token' in data.value) {
+      localStorage.setItem('token', data.value.token)
+      navigateTo('/')
+    } else {
+      throw new Error('登录成功但未返回有效令牌')
+    }
     
   } catch (error: any) {
     console.error('登录失败:', error)
-    alert(error?.message || '登录失败，请检查邮箱和密码')
+    showMessage('登录失败，请检查邮箱和密码', 'error')
   }
 }
 
 const handleRegister = async () => {
   if (registerForm.value.password !== registerForm.value.confirmPassword) {
-    alert('两次输入的密码不一致')
+    showMessage('两次输入的密码不一致', 'warning')
     return
   }
   
-  if (!registerForm.value.agreeTerms) {
-    alert('请阅读并同意服务条款和隐私政策')
-    return
-  }
   
   try {
     const { data, error } = await useFetch('/api/auth/register', {
@@ -337,20 +341,23 @@ const handleRegister = async () => {
       throw new Error(error.value.message || '注册失败')
     }
     
-    localStorage.setItem('token', data.value.token)
-    
-    alert('注册成功')
-    navigateTo('/')
+    if (data.value && 'token' in data.value) {
+      localStorage.setItem('token', data.value.token)
+      showMessage('注册成功', 'success')
+      navigateTo('/')
+    } else {
+      throw new Error('登录成功但未返回有效令牌')
+    }
     
   } catch (error: any) {
     console.error('注册失败:', error)
-    alert(error?.message || '注册失败，请稍后重试')
+    showMessage('注册失败，请稍后重试', 'error')
   }
 }
 
 const handleForgotPassword = async () => {
   if (forgotPasswordForm.value.newPassword !== forgotPasswordForm.value.confirmNewPassword) {
-    alert('两次输入的密码不一致')
+    showMessage('两次输入的密码不一致', 'warning')
     return
   }
   
@@ -368,7 +375,7 @@ const handleForgotPassword = async () => {
       throw new Error(error.value.message || '重置密码失败')
     }
     
-    alert('密码重置成功，请使用新密码登录')
+    showMessage('密码重置成功，请使用新密码登录', 'success')
     
     forgotPasswordForm.value = {
       email: '',
@@ -381,7 +388,7 @@ const handleForgotPassword = async () => {
     
   } catch (error: any) {
     console.error('重置密码失败:', error)
-    alert(error?.message || '重置密码失败，请稍后重试')
+    showMessage('重置密码失败，请稍后重试', 'error')
   }
 }
 </script>
